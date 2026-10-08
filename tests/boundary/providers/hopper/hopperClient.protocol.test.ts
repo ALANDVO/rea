@@ -201,14 +201,22 @@ describe("HopperClient operational diagnostics", () => {
   it("records process exit code, stage, and restart guidance on unexpected exit", async () => {
     const launcher = new FixtureLauncher();
     const client = await startClient(launcher);
+    const child = launcher.processes.at(-1);
+    if (child === undefined) throw new Error("Missing fixture process");
+    const exited = once(child, "exit");
     const result = await client.callTool("exit");
+    await exited;
     expect(result.ok).toBe(false);
     if (!result.ok) {
+      if (!(result.error instanceof HopperProcessError))
+        throw new Error("Expected a provider process error");
+      expect(["unreachable", "exited"]).toContain(result.error.providerState);
+      expect(result.error.exitCode).toBe(
+        result.error.providerState === "exited" ? 7 : null,
+      );
       expect(result.error).toMatchObject({
         _tag: "HopperProcessError",
-        exitCode: 7,
         operation: "exit",
-        providerState: "exited",
       });
       const projected = projectAnalysisError(result.error);
       expect(projected).toMatchObject({
@@ -216,15 +224,12 @@ describe("HopperClient operational diagnostics", () => {
         retryable: true,
         details: {
           stage: "analysis",
-          provider_state: "exited",
+          provider_state: result.error.providerState,
           retry_action: "restart_provider",
           operation: "exit",
-          exit_code: 7,
+          exit_code: result.error.exitCode,
         },
       });
-      expect(projected.message).toContain(
-        "Hopper exited during exit (exit code 7)",
-      );
       expect(projected.remediation.action).toContain("close_binary");
     }
     expect(client.operationHealth()).toMatchObject({

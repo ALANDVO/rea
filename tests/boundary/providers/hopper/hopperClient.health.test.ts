@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
+import { projectAnalysisError } from "../../../../src/domain/analysisErrorProjection.js";
 import { ok } from "../../../../src/domain/result.js";
 import type {
   BridgeLauncher,
@@ -101,6 +102,36 @@ describe("Hopper provider lifecycle health", () => {
         operation: "procedure_pseudo_code",
       },
     });
+  });
+
+  it("projects the exit code when the owned process exit is observed before disconnection", async () => {
+    const { client, launcher } = await start(true);
+    const pending = client.callTool("hang");
+    const request = await launcher.fixture.waitForRequest("hang");
+    launcher.observed.exit(7);
+    const result = await pending;
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        _tag: "HopperProcessError",
+        exitCode: 7,
+        providerState: "exited",
+        requestId: request.id,
+      },
+    });
+    if (!result.ok)
+      expect(projectAnalysisError(result.error)).toMatchObject({
+        message: expect.stringContaining(
+          "Hopper exited during hang (exit code 7)",
+        ),
+        details: {
+          provider_state: "exited",
+          exit_code: 7,
+          stage: "analysis",
+          operation: "hang",
+          request_id: request.id,
+        },
+      });
   });
 
   it("retains an observed exit when an earlier successful reply resumes afterward", async () => {

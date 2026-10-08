@@ -31,10 +31,7 @@ import {
 import { ProviderAdapterError } from "./providerAdapterError.js";
 import { ProviderSelectionError } from "./providerSelectionError.js";
 import { UnknownRegistryError } from "./unknownRegistryError.js";
-import {
-  providerFailureStage,
-  providerRetryAction,
-} from "./providerOperationHealth.js";
+import { providerRetryAction } from "./providerOperationHealth.js";
 import {
   type AnalysisError,
   type AnalysisErrorTag,
@@ -333,13 +330,7 @@ const providerErrorDetails = (
       ...(error.requestId === undefined ? {} : { request_id: error.requestId }),
     };
   if (error instanceof HopperProcessError) {
-    const stage = providerFailureStage({
-      ...(error.operation === undefined ? {} : { operation: error.operation }),
-      startupFailure: error.failureCode !== undefined,
-      ...(error.diagnostic === undefined
-        ? {}
-        : { diagnosticOperation: error.diagnostic.operation }),
-    });
+    const stage = error.stage;
     return {
       exit_code: error.exitCode,
       stage,
@@ -396,12 +387,7 @@ const lifecycleErrorDetails = (
     return { operation: error.operation, timeout_ms: error.timeoutMs };
   if (error instanceof HopperTimeoutError)
     return {
-      stage: providerFailureStage({
-        ...(error.operation === undefined
-          ? {}
-          : { operation: error.operation }),
-        startupFailure: error.operation === undefined,
-      }),
+      stage: error.operation === undefined ? "startup" : error.stage,
       timeout_ms: error.timeoutMs,
       provider_state: error.providerState,
       retry_action: error.providerState === "busy" ? "wait" : "retry",

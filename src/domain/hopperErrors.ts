@@ -1,5 +1,8 @@
 import { AnalysisError } from "./analysisErrorBase.js";
-import type { HopperProcessProviderState } from "./providerOperationHealth.js";
+import type {
+  HopperProcessProviderState,
+  ProviderFailureStage,
+} from "./providerOperationHealth.js";
 import {
   hopperStartupFailure,
   type HopperStartupDiagnostic,
@@ -19,6 +22,9 @@ export class HopperTimeoutError extends HopperError {
     readonly operation?: string,
     readonly requestId?: number,
     readonly providerState: "busy" | "not_started" = "not_started",
+    readonly stage: ProviderFailureStage = operation === undefined
+      ? "launch"
+      : "analysis",
   ) {
     super(
       `Hopper ${operation === undefined ? "startup" : operation} timed out after ${String(timeoutMs)}ms`,
@@ -78,6 +84,7 @@ export class HopperProcessError extends HopperError {
   readonly failureCode: HopperStartupFailureCode | undefined;
   override readonly userMessage: string | undefined;
   readonly providerState: HopperProcessProviderState;
+  readonly stage: ProviderFailureStage;
 
   constructor(
     readonly exitCode: number | null,
@@ -85,9 +92,17 @@ export class HopperProcessError extends HopperError {
     readonly operation?: string,
     readonly requestId?: number,
     providerState?: HopperProcessProviderState,
+    stage?: ProviderFailureStage,
   ) {
     super(`Hopper bridge stopped unexpectedly with code ${String(exitCode)}`);
     const failure = hopperStartupFailure(exitCode);
+    this.stage =
+      stage ??
+      (failure === undefined
+        ? operation === undefined
+          ? "connection"
+          : "analysis"
+        : "launch");
     this.failureCode = failure?.code;
     this.userMessage = failure?.message;
     this.providerState =

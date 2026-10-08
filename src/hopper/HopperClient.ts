@@ -20,7 +20,6 @@ import {
   type HopperStartupFailureDiagnostic,
 } from "../domain/hopperStartupFailure.js";
 import {
-  providerFailureStage,
   providerRetryAction,
   sharedProviderFailureStage,
   type ProviderOperationHealth,
@@ -38,6 +37,7 @@ import {
   ProviderProcessSupervisor,
 } from "../process/ProviderProcess.js";
 import type { BridgeLaunch, BridgeLauncher } from "./BridgeLauncher.js";
+import { hopperOperationStage } from "./HopperOperationStage.js";
 import type { HopperDiagnostic } from "./HopperDiagnostics.js";
 import { cleanupHopperSession } from "./HopperCleanup.js";
 import {
@@ -122,7 +122,8 @@ export class HopperClient {
   readonly #onSocketClose = (): void => {
     if (this.#closing) return;
     const launch = this.#launch;
-    if (this.#launcherExitCode !== undefined) return;
+    if (launch?.ownsProcessLifetime && this.#launcherExitCode !== undefined)
+      return;
     if (launch?.ownsProcessLifetime) {
       setImmediate(() => {
         if (this.#closing || this.#launcherExitCode !== undefined) return;
@@ -139,13 +140,12 @@ export class HopperClient {
       });
       return;
     }
-    const exitCode = launch?.process.exitCode ?? null;
     const error = new HopperProcessError(
-      exitCode,
-      this.#launcherFailureDiagnostic,
+      null,
       undefined,
       undefined,
-      exitCode !== null ? "exited" : "unreachable",
+      undefined,
+      "unreachable",
     );
     this.#failAll(error);
     this.#rememberProcessFailure(error, []);
@@ -198,15 +198,20 @@ export class HopperClient {
   operationHealth(): ProviderOperationHealth {
     const failure = this.#operationFailure;
     if (failure !== undefined) {
-      const requests = failure.requests.map((request) => ({
-        ...request,
-        stage: providerFailureStage({ operation: request.operation }),
-      }));
+      const requests: readonly ProviderOperationRequest[] =
+        failure.requests.map((request) => ({
+          ...request,
+          stage: failure.startupFailure
+            ? "launch"
+            : hopperOperationStage(request.operation),
+        }));
       return {
         state: failure.state,
         stage:
           requests.length === 0
-            ? providerFailureStage({ startupFailure: failure.startupFailure })
+            ? failure.startupFailure
+              ? "launch"
+              : "connection"
             : sharedProviderFailureStage(requests),
         retryAction: providerRetryAction(failure.state, failure.startupFailure),
         exitCode: failure.exitCode,
@@ -215,7 +220,7 @@ export class HopperClient {
     }
     const activity = this.requestActivity();
     if (activity !== null) {
-      const stage = providerFailureStage({ operation: activity.operation });
+      const stage = hopperOperationStage(activity.operation);
       return {
         state: "busy",
         stage,
@@ -267,7 +272,25 @@ export class HopperClient {
     void started.then(
       (result) => {
         release();
-        if (!result.ok) reset();
+        if (!result.ok) {
+          if (result.error instanceof HopperProcessError)
+            this.#rememberProcessFailure(result.error, []);
+          else if (
+            this.#operationFailure === undefined &&
+            (result.error instanceof HopperTimeoutError ||
+              result.error instanceof HopperStartError)
+          )
+            this.#operationFailure = {
+              state:
+                result.error instanceof HopperTimeoutError
+                  ? "not_started"
+                  : "unknown",
+              exitCode: null,
+              startupFailure: true,
+              requests: [],
+            };
+          reset();
+        }
       },
       (cause: unknown) => {
         this.#logger.debug(
@@ -285,6 +308,7 @@ export class HopperClient {
     signal?: AbortSignal,
   ): Promise<Result<HopperServerInfo, HopperError>> {
     if (isAborted(signal)) return err(new HopperCancelledError());
+    this.#operationFailure = undefined;
     if (this.#socket !== undefined || this.#runtimeRoot !== undefined) {
       return err(new HopperProtocolError("Hopper client is already started"));
     }
@@ -528,7 +552,14 @@ export class HopperClient {
     const token = this.#token;
     if (socket === undefined || socket.destroyed || token === undefined) {
       return this.#unavailableRequest(
-        new HopperProcessError(null, undefined, method, id, "unreachable"),
+        new HopperProcessError(
+          null,
+          undefined,
+          method,
+          id,
+          "unreachable",
+          hopperOperationStage(method),
+        ),
       );
     }
     if (options.signal?.aborted === true)
@@ -623,8 +654,8 @@ export class HopperClient {
       type: "launcher-exit",
       code: event.code,
     });
-    this.#rememberExit(event.code);
-    if (launch.ownsProcessLifetime && !this.#closing)
+    if (launch.ownsProcessLifetime && !this.#closing) {
+      this.#rememberExit(event.code);
       this.#failAll(
         new HopperProcessError(
           event.code,
@@ -634,6 +665,7 @@ export class HopperClient {
           "exited",
         ),
       );
+    }
   }
 
   #abortProtocol(message: string, cause?: Error): void {
@@ -663,10 +695,7 @@ export class HopperClient {
     operation: string,
   ): void {
     if (this.#closing) return;
-    if (result.ok) {
-      this.#operationFailure = undefined;
-      return;
-    }
+    if (result.ok) return;
     if (!(result.error instanceof HopperProcessError)) return;
     this.#rememberProcessFailure(result.error, [
       {
@@ -728,13 +757,14 @@ interface FailedProviderRequest {
 }
 
 interface OperationFailureRecord {
-  readonly state: "exited" | "unreachable" | "unknown";
+  readonly state: "exited" | "unreachable" | "unknown" | "not_started";
   readonly exitCode: number | null;
   readonly startupFailure: boolean;
   readonly requests: readonly FailedProviderRequest[];
 }
 
 const PROCESS_FAILURE_RANK = {
+  not_started: 0,
   unknown: 0,
   unreachable: 1,
   exited: 2,

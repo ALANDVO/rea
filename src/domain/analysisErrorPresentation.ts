@@ -25,10 +25,7 @@ import {
 } from "./hopperErrors.js";
 import { ProviderSelectionError } from "./providerSelectionError.js";
 import { UnknownRegistryError } from "./unknownRegistryError.js";
-import {
-  providerFailureStage,
-  providerRetryAction,
-} from "./providerOperationHealth.js";
+import { providerRetryAction } from "./providerOperationHealth.js";
 import {
   type AnalysisError,
   type AnalysisErrorTag,
@@ -216,13 +213,7 @@ const hopperProcessRemediation = (error: HopperProcessError): string => {
 };
 
 const hopperProcessMessage = (error: HopperProcessError): string => {
-  const stage = providerFailureStage({
-    ...(error.operation === undefined ? {} : { operation: error.operation }),
-    startupFailure: error.failureCode !== undefined,
-    ...(error.diagnostic === undefined
-      ? {}
-      : { diagnosticOperation: error.diagnostic.operation }),
-  });
+  const stage = error.stage;
   const where = error.operation ?? stage;
   const request =
     error.requestId === undefined

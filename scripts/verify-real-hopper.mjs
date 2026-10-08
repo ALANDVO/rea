@@ -296,6 +296,7 @@ try {
     { name: "list_documents", arguments: {} },
     options,
   );
+  requireSuccessfulTool(documents, "list_documents");
   requireBridgeProgress(progressUpdates);
   const rejectedProcedure = await client.callTool(
     {

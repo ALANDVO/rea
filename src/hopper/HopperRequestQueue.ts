@@ -2,6 +2,7 @@ import type {
   ProgressReporter,
   ProgressUpdate,
 } from "../application/ProgressReporter.js";
+import { hopperOperationStage } from "./HopperOperationStage.js";
 import type { HopperBridgeEvent } from "./protocol.js";
 import {
   HopperCancelledError,
@@ -215,6 +216,7 @@ export class HopperRequestQueue {
                 entry.method,
                 entry.id,
                 "unreachable",
+                hopperOperationStage(entry.method),
               ),
             ),
           ),
@@ -298,6 +300,9 @@ const withRequestContext = (
       error.operation ?? entry.method,
       error.requestId ?? entry.id,
       error.providerState,
+      error.operation === undefined && error.stage === "connection"
+        ? hopperOperationStage(entry.method)
+        : error.stage,
     );
   if (error instanceof HopperRemoteError)
     return new HopperRemoteError(error.code, error.safeMessage, {

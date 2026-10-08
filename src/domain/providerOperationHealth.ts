@@ -53,23 +53,6 @@ export interface ProviderOperationHealth {
   readonly requests: readonly ProviderOperationRequest[];
 }
 
-/** Classify the stage REA can support without guessing a missing cause. */
-export const providerFailureStage = (input: {
-  readonly operation?: string;
-  readonly startupFailure?: boolean;
-  readonly diagnosticOperation?: string;
-}): ProviderFailureStage => {
-  if (
-    input.diagnosticOperation === "launch" ||
-    input.diagnosticOperation === "probe" ||
-    (input.startupFailure === true && input.operation === undefined)
-  )
-    return "launch";
-  if (input.operation === undefined) return "connection";
-  if (input.operation === "procedure_pseudo_code") return "decompilation";
-  return "analysis";
-};
-
 /**
  * Choose a recovery action from the observed state.
  * Startup failures keep their existing install or configuration guidance.

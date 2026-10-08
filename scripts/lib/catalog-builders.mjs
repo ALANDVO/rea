@@ -16,12 +16,18 @@ export const toolFamilyCatalog = (sources) => {
     {
       id: "native",
       surface: "native-provider",
-      contracts: sources.nativeContracts.NATIVE_TOOL_CONTRACTS,
+      contracts: [
+        ...sources.nativeContracts.NATIVE_TOOL_CONTRACTS,
+        ...sources.binaryDiagnosticsContracts.BINARY_DIAGNOSTICS_TOOL_CONTRACTS,
+      ],
     },
     {
       id: "artifact",
       surface: "artifact-provider",
-      contracts: sources.artifactContracts.ARTIFACT_TOOL_CONTRACTS,
+      contracts: [
+        ...sources.artifactContracts.ARTIFACT_TOOL_CONTRACTS,
+        ...sources.evmContracts.EVM_TOOL_CONTRACTS,
+      ],
     },
     {
       id: "managed",
@@ -48,6 +54,8 @@ export const toolFamilyCatalog = (sources) => {
         ...sources.browserContracts.BROWSER_TOOL_CONTRACTS,
         ...sources.webRuntimeContracts.WEB_RUNTIME_TOOL_CONTRACTS,
         ...sources.browserScenarioContracts.BROWSER_SCENARIO_TOOL_CONTRACTS,
+        ...sources.webNetworkCaptureContracts
+          .WEB_NETWORK_CAPTURE_TOOL_CONTRACTS,
       ],
     },
     {
@@ -142,6 +150,15 @@ export const providerCatalog = (sources) => {
       contracts: sources.nativeContracts.NATIVE_TOOL_CONTRACTS,
     },
     {
+      identity: sources.pwntoolsProvider.PWNTOOLS_PROVIDER_IDENTITY,
+      contracts:
+        sources.binaryDiagnosticsContracts.BINARY_DIAGNOSTICS_TOOL_CONTRACTS,
+    },
+    {
+      identity: sources.evmProvider.EVMOLE_PROVIDER_IDENTITY,
+      contracts: sources.evmContracts.EVM_TOOL_CONTRACTS,
+    },
+    {
       identity: sources.artifactProviders.ARTIFACT_GRAPH_PROVIDER,
       contracts: sources.artifactContracts.ARTIFACT_TOOL_CONTRACTS,
     },
@@ -169,6 +186,17 @@ export const providerCatalog = (sources) => {
     {
       identity: sources.androidProvider.JADX_PROVIDER_IDENTITY,
       contracts: sources.androidContracts.ANDROID_TOOL_CONTRACTS,
+    },
+    {
+      identity: sources.webNetworkCaptureProvider.HAR_CAPTURE_PROVIDER_IDENTITY,
+      contracts:
+        sources.webNetworkCaptureContracts.WEB_NETWORK_CAPTURE_TOOL_CONTRACTS,
+    },
+    {
+      identity:
+        sources.webNetworkCaptureProvider.MITMPROXY_CAPTURE_PROVIDER_IDENTITY,
+      contracts:
+        sources.webNetworkCaptureContracts.WEB_NETWORK_CAPTURE_TOOL_CONTRACTS,
     },
     {
       identity: sources.browserProvider.CDP_BROWSER_PROVIDER_IDENTITY,

@@ -40,7 +40,12 @@ const SOURCE_PATHS = {
   officialContracts: "dist/contracts/officialToolContracts.js",
   enhancedContracts: "dist/contracts/enhancedToolContracts.js",
   sessionContracts: "dist/contracts/sessionToolContracts.js",
+  binaryDiagnosticsContracts:
+    "dist/contracts/native/binaryDiagnosticsToolContracts.js",
+  pwntoolsProvider: "dist/native/pwntools/PwntoolsRelease.js",
   nativeContracts: "dist/contracts/native/nativeToolContracts.js",
+  evmContracts: "dist/contracts/evm/evmToolContracts.js",
+  evmProvider: "dist/evm/EvmoleRelease.js",
   artifactContracts: "dist/contracts/artifactToolContracts.js",
   managedContracts: "dist/contracts/managed/managedToolContracts.js",
   firmwareContracts: "dist/contracts/firmware/firmwareToolContracts.js",
@@ -51,6 +56,9 @@ const SOURCE_PATHS = {
     "dist/contracts/managed/managedWorkflowToolContracts.js",
   browserContracts: "dist/contracts/browserToolContracts.js",
   webRuntimeContracts: "dist/contracts/webRuntimeToolContracts.js",
+  webNetworkCaptureContracts:
+    "dist/contracts/webNetworkCaptureToolContracts.js",
+  webNetworkCaptureProvider: "dist/browser/history/CaptureRelease.js",
   browserScenarioContracts: "dist/contracts/browserScenarioToolContracts.js",
   electronContracts: "dist/contracts/javascript/electronToolContracts.js",
   javascriptRuntimeObservationContracts:

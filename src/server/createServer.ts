@@ -1,3 +1,12 @@
+import type { EvmInterfaceService } from "../application/evm/EvmInterfaceService.js";
+import { createEvmInterfaceService } from "../composition/evm.js";
+import { registerEvmTools } from "./registerEvmTools.js";
+import { registerRecordedCrashTools } from "./registerRecordedCrashTools.js";
+import { createRecordedCrashService } from "../composition/binaryDiagnostics.js";
+import type { RecordedCrashService } from "../application/binaryDiagnostics/RecordedCrashService.js";
+import { registerBinaryDiagnosticsTools } from "./registerBinaryDiagnosticsTools.js";
+import { createBinaryLayoutService } from "../composition/binaryDiagnostics.js";
+import type { BinaryLayoutService } from "../application/binaryDiagnostics/BinaryLayoutService.js";
 import { McpServer } from "@modelcontextprotocol/server";
 import { isAbsolute } from "node:path";
 
@@ -25,6 +34,9 @@ import type { WebSourceLocationService } from "../application/WebSourceLocationS
 import type { WebRuntimeService } from "../application/WebRuntimeService.js";
 import { createWebRuntimeService } from "../composition/webRuntime.js";
 import { registerWebRuntimeTools } from "./registerWebRuntimeTools.js";
+import type { WebNetworkCaptureService } from "../application/WebNetworkCaptureService.js";
+import { createWebNetworkCaptureService } from "../composition/webNetworkCaptures.js";
+import { registerWebNetworkCaptureTool } from "./registerWebNetworkCaptureTool.js";
 import { registerJavaScriptRecoveryTool } from "./registerJavaScriptRecoveryTool.js";
 import { JavaScriptRecoveryService } from "../application/javascript/JavaScriptRecoveryService.js";
 import type { JavaScriptRecoveryPort } from "../application/javascript/JavaScriptRecoveryPort.js";
@@ -56,12 +68,16 @@ const ACTIVE_TARGET_INSTRUCTIONS =
   "REA analyzes the active reverse-engineering target. Use the analysis tool that answers the question directly. Search or list symbols when discovery is needed; analyze_function provides a function dossier, and focused procedure tools return individual facets.";
 
 export interface CreateServerOptions {
+  readonly evmInterface?: EvmInterfaceService;
   readonly logger?: Logger;
+  readonly binaryLayout?: BinaryLayoutService;
+  readonly recordedCrash?: RecordedCrashService;
   readonly firmwareAnalysis?: FirmwareAnalysisPort;
   readonly javascriptRecovery?: JavaScriptRecoveryPort;
   readonly webModuleTrace?: WebModuleTraceService;
   readonly webSourceLocation?: WebSourceLocationService;
   readonly webRuntime?: WebRuntimeService;
+  readonly webNetworkCapture?: WebNetworkCaptureService;
   readonly androidAnalysis?: AndroidAnalysisPort;
   readonly browserObservation?: BrowserObservationPort;
   readonly browserScenarioCapture?: BrowserScenarioCapturePort;
@@ -81,9 +97,22 @@ const installSessionToolAvailability = (
   const policy = sessionAvailabilityPolicy(options.availabilityPolicy, {
     optionalProviderLoadFailures: options.optionalProviderLoadFailures,
     optionalFeatures: {
+      evmInterfaceEnabled:
+        options.evmInterface !== undefined ||
+        (process.platform === "linux" && process.arch === "x64"),
       webModuleResolutionEnabled:
         options.webModuleTrace !== undefined ||
         isAbsolute(process.env.REA_BROWSER_EXECUTABLE ?? ""),
+      recordedCrashEnabled:
+        options.recordedCrash !== undefined ||
+        (process.platform === "linux" &&
+          process.arch === "x64" &&
+          isAbsolute(process.env.REA_PWNTOOLS_PYTHON ?? "")),
+      binaryLayoutEnabled:
+        options.binaryLayout !== undefined ||
+        (process.platform === "linux" &&
+          process.arch === "x64" &&
+          isAbsolute(process.env.REA_PWNTOOLS_PYTHON ?? "")),
       firmwareInspectionEnabled:
         options.firmwareAnalysis !== undefined ||
         (process.platform === "linux" &&
@@ -186,6 +215,24 @@ export const createServer = (
     toolLogger,
     recordEvidence,
   );
+  registerBinaryDiagnosticsTools(
+    server,
+    options.binaryLayout ?? createBinaryLayoutService(),
+    toolLogger,
+    recordEvidence,
+  );
+  registerEvmTools(
+    server,
+    options.evmInterface ?? createEvmInterfaceService(),
+    toolLogger,
+    recordEvidence,
+  );
+  registerRecordedCrashTools(
+    server,
+    options.recordedCrash ?? createRecordedCrashService(),
+    toolLogger,
+    recordEvidence,
+  );
   registerFirmwareTools(
     server,
     new FirmwareAnalysisService(
@@ -210,6 +257,12 @@ export const createServer = (
   registerWebRuntimeTools(
     server,
     options.webRuntime ?? createWebRuntimeService(),
+    toolLogger,
+    recordEvidence,
+  );
+  registerWebNetworkCaptureTool(
+    server,
+    options.webNetworkCapture ?? createWebNetworkCaptureService(),
     toolLogger,
     recordEvidence,
   );

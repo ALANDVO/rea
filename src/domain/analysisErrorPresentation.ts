@@ -1,4 +1,10 @@
-import { AnalysisInputError } from "./analysisErrorCore.js";
+import {
+  AnalysisAccessDeniedError,
+  AnalysisArtifactChangedError,
+  AnalysisInputError,
+  AnalysisUnsupportedTargetError,
+  AnalysisResourceConstraintError,
+} from "./analysisErrorCore.js";
 import { ArtifactOperationError } from "./artifactOperationError.js";
 import {
   BinaryTargetError,
@@ -32,6 +38,14 @@ import { type AnalysisErrorProjection } from "./analysisErrorProjection.js";
 export const analysisErrorRemediationAction = (
   error: AnalysisError,
 ): string => {
+  if (error instanceof AnalysisUnsupportedTargetError)
+    return "Select a target supported by this operation or choose an operation supporting the reported target format.";
+  if (error instanceof AnalysisResourceConstraintError)
+    return error.resource === "cpu"
+      ? "Review the reported worker CPU limits and observed signal. Retry with sufficient CPU time or a smaller artifact; REA retains tighter inherited limits."
+      : error.resource === "file-size"
+        ? "Review the reported worker file-size limits and write failure. Retry with a sufficient file-size allowance for the evidence reply; REA retains tighter inherited limits."
+        : "Review the reported worker memory limits and available host memory. Retry with sufficient memory or a smaller artifact; REA retains tighter inherited limits.";
   if (error instanceof HopperTimeoutError)
     return error.providerState === "busy"
       ? "Check binary_session.analysis_activity, wait for the active Hopper request to finish, then retry."
@@ -51,6 +65,10 @@ export const analysisErrorRemediationAction = (
     error.constraint === "directory_requires_file"
   )
     return "For a JavaScript/Electron application directory, call analyze_javascript_application with input_path or run `rea analyze <directory>`. For binary analysis, select its executable file.";
+  if (error instanceof AnalysisAccessDeniedError)
+    return "Check the current process's read access to the selected path. Retry with a readable local file.";
+  if (error instanceof AnalysisArtifactChangedError)
+    return "Wait until the selected file is stable, then retry this operation.";
   if (error instanceof AnalysisInputError)
     return "Correct the listed arguments and retry.";
   if (error instanceof UnknownRegistryError && error.reason === "not-found")
@@ -111,18 +129,28 @@ const STATIC_ERROR_CATEGORIES: Readonly<
   Partial<Record<AnalysisErrorTag, AnalysisErrorProjection["category"]>>
 > = {
   AnalysisInputError: "invalid_input",
+  AnalysisAccessDeniedError: "unavailable",
+  AnalysisArtifactChangedError: "integrity_mismatch",
   AnalysisCapabilityUnavailableError: "unsupported_provider",
+  AnalysisUnsupportedTargetError: "unsupported_target",
   ProviderSelectionError: "unsupported_provider",
   EvidenceIntegrityError: "integrity_mismatch",
   AnalysisCancelledError: "cancelled",
   HopperCancelledError: "cancelled",
   AnalysisTimeoutError: "timeout",
+  AnalysisResourceConstraintError: "resource_constraint",
   HopperTimeoutError: "timeout",
   NoBinaryOpenError: "unavailable",
   BinaryTargetError: "unavailable",
 };
 
 export const analysisErrorUserMessage = (error: AnalysisError): string => {
+  if (error instanceof AnalysisUnsupportedTargetError) return error.message;
+  if (error instanceof AnalysisResourceConstraintError) return error.reason;
+  if (error instanceof AnalysisAccessDeniedError)
+    return "Host filesystem permissions denied read access to the selected path.";
+  if (error instanceof AnalysisArtifactChangedError)
+    return "The selected artifact changed during acquisition; no stable snapshot was decoded.";
   if (error instanceof AnalysisInputError)
     return "Analysis input is invalid. Check the arguments and try again.";
   const hopperMessage = hopperErrorUserMessage(error);
@@ -138,8 +166,7 @@ export const analysisErrorUserMessage = (error: AnalysisError): string => {
       : `Evidence ${error.evidenceId} does not match the requested reference (${error.reason}). Check the expected and actual identity in the diagnostic details.`;
   if (error instanceof EvidenceIntegrityError)
     return "Evidence is invalid or has changed. Recreate or re-import it, then try again.";
-  if (error instanceof EvidenceFileError)
-    return evidenceFileMessage(error.reason);
+  if (error instanceof EvidenceFileError) return evidenceFileMessage(error);
   if (error instanceof UnknownRegistryError && error.reason === "not-found")
     return "The requested residual unknown does not exist in this session. Check the unknown_id and try again.";
   if (error instanceof UnknownRegistryError)
@@ -273,7 +300,14 @@ const artifactMessage = (reason: ArtifactOperationError["reason"]): string => {
   return "Artifact could not be read or written. Check file access and try again.";
 };
 
-const evidenceFileMessage = (reason: EvidenceFileError["reason"]): string => {
+const evidenceFileMessage = ({
+  operation,
+  reason,
+}: EvidenceFileError): string => {
+  if (reason === "missing")
+    return operation === "read"
+      ? "Evidence file does not exist at the selected path. Check the path and try again."
+      : "Evidence output directory does not exist. Choose an existing directory and try again.";
   if (reason === "not-file")
     return "Evidence path does not point to a regular file. Choose a file and try again.";
   if (reason === "exists")
@@ -286,10 +320,14 @@ const evidenceFileMessage = (reason: EvidenceFileError["reason"]): string => {
 const KNOWN_ERROR_TAGS = {
   AnalysisProtocolError: true,
   AnalysisInputError: true,
+  AnalysisAccessDeniedError: true,
+  AnalysisArtifactChangedError: true,
   AnalysisOutputError: true,
   AnalysisCapabilityUnavailableError: true,
+  AnalysisUnsupportedTargetError: true,
   AnalysisCancelledError: true,
   AnalysisTimeoutError: true,
+  AnalysisResourceConstraintError: true,
   ProviderSelectionError: true,
   ProviderAdapterError: true,
   BrowserObservationError: true,

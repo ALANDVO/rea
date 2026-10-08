@@ -10,10 +10,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -29,7 +31,79 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
+        }
+      },
+      "required": ["code", "category", "message", "retryable", "remediation"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "const": "access_denied" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "invalid_input",
+            "unsupported_provider",
+            "unsupported_target",
+            "integrity_mismatch",
+            "truncated",
+            "cancelled",
+            "timeout",
+            "resource_constraint",
+            "unavailable",
+            "execution_failure"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" },
+        "remediation": {
+          "type": "object",
+          "properties": { "action": { "type": "string", "minLength": 1 } },
+          "required": ["action"],
+          "additionalProperties": false
+        },
+        "details": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {}
+        }
+      },
+      "required": ["code", "category", "message", "retryable", "remediation"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "const": "artifact_changed" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "invalid_input",
+            "unsupported_provider",
+            "unsupported_target",
+            "integrity_mismatch",
+            "truncated",
+            "cancelled",
+            "timeout",
+            "resource_constraint",
+            "unavailable",
+            "execution_failure"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" },
+        "remediation": {
+          "type": "object",
+          "properties": { "action": { "type": "string", "minLength": 1 } },
+          "required": ["action"],
+          "additionalProperties": false
+        },
+        "details": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -44,10 +118,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -63,7 +139,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -78,10 +154,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -97,7 +175,43 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
+        }
+      },
+      "required": ["code", "category", "message", "retryable", "remediation"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "const": "unsupported_target" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "invalid_input",
+            "unsupported_provider",
+            "unsupported_target",
+            "integrity_mismatch",
+            "truncated",
+            "cancelled",
+            "timeout",
+            "resource_constraint",
+            "unavailable",
+            "execution_failure"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" },
+        "remediation": {
+          "type": "object",
+          "properties": { "action": { "type": "string", "minLength": 1 } },
+          "required": ["action"],
+          "additionalProperties": false
+        },
+        "details": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -112,10 +226,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -131,7 +247,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -146,10 +262,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -165,7 +283,43 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
+        }
+      },
+      "required": ["code", "category", "message", "retryable", "remediation"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "const": "resource_constraint" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "invalid_input",
+            "unsupported_provider",
+            "unsupported_target",
+            "integrity_mismatch",
+            "truncated",
+            "cancelled",
+            "timeout",
+            "resource_constraint",
+            "unavailable",
+            "execution_failure"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" },
+        "remediation": {
+          "type": "object",
+          "properties": { "action": { "type": "string", "minLength": 1 } },
+          "required": ["action"],
+          "additionalProperties": false
+        },
+        "details": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -180,10 +334,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -199,7 +355,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -214,10 +370,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -270,10 +428,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -289,7 +449,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -304,10 +464,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -323,7 +485,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -338,10 +500,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -357,7 +521,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -372,10 +536,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -391,7 +557,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -406,10 +572,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -425,7 +593,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -440,10 +608,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -459,7 +629,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -474,10 +644,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -493,7 +665,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -508,10 +680,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -527,7 +701,7 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
@@ -542,10 +716,12 @@
           "enum": [
             "invalid_input",
             "unsupported_provider",
+            "unsupported_target",
             "integrity_mismatch",
             "truncated",
             "cancelled",
             "timeout",
+            "resource_constraint",
             "unavailable",
             "execution_failure"
           ]
@@ -561,27 +737,11 @@
         "details": {
           "type": "object",
           "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
+          "additionalProperties": {}
         }
       },
       "required": ["code", "category", "message", "retryable", "remediation"],
       "additionalProperties": false
     }
-  ],
-  "$defs": {
-    "__schema0": {
-      "anyOf": [
-        { "type": "string" },
-        { "type": "number" },
-        { "type": "boolean" },
-        { "type": "null" },
-        { "type": "array", "items": { "$ref": "#/$defs/__schema0" } },
-        {
-          "type": "object",
-          "propertyNames": { "type": "string" },
-          "additionalProperties": { "$ref": "#/$defs/__schema0" }
-        }
-      ]
-    }
-  }
+  ]
 }

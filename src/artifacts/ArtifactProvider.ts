@@ -8,6 +8,7 @@ import {
   type ExecutionOptions,
 } from "../application/AnalysisProvider.js";
 import { inspectBundleKeyedArchive } from "./apple/KeyedArchiveReader.js";
+import { traceDylibResolution } from "./apple/DylibResolutionReader.js";
 import { basename, dirname } from "node:path";
 import { inventoryArtifact } from "./inventory/ArtifactInventory.js";
 import { extractArtifact } from "./extraction/ArtifactExtraction.js";
@@ -20,7 +21,10 @@ import {
   type ArtifactAnalysisOperation,
 } from "../contracts/artifactToolContracts.js";
 import type { BinaryTarget } from "../domain/binaryTarget.js";
-import { AnalysisCapabilityUnavailableError } from "../domain/analysisErrorCore.js";
+import {
+  AnalysisCapabilityUnavailableError,
+  AnalysisInputError,
+} from "../domain/analysisErrorCore.js";
 import { ArtifactOperationError } from "../domain/artifactOperationError.js";
 import { type AnalysisError } from "../domain/analysisErrorBase.js";
 import type { JsonValue } from "../domain/jsonValue.js";
@@ -115,10 +119,15 @@ class ArtifactClient implements AnalysisClient {
           parameters.path !== "." &&
           parameters.path !== basename(this.target.path)
         )
-          throw new ArtifactReaderFailure(
-            "path",
-            "For an active plist, path must select that archive (omit path or use its basename)",
-          );
+          throw new AnalysisInputError(operation, undefined, [
+            {
+              path: ["path"],
+              reason: "invalid_value",
+              message:
+                "For an active plist, path must select that archive (omit path or use its basename).",
+              expected: basename(this.target.path),
+            },
+          ]);
         const bundlePath = standalone
           ? dirname(this.target.path)
           : this.target.sourcePath;
@@ -153,6 +162,8 @@ class ArtifactClient implements AnalysisClient {
       if (operation === "inspect_asset_catalog") {
         return await this.inspectAssetCatalog(parameters, options);
       }
+      if (operation === "trace_dylib_resolution")
+        return await this.traceDylibResolution(parameters, options);
       if (operation === "extract_artifact") {
         const parsed = artifactExtractionExecutionSchema.parse(parameters);
         const result = await extractArtifact(
@@ -227,6 +238,40 @@ class ArtifactClient implements AnalysisClient {
       createAnalysisExecution(result, IDENTITY, {
         limitations: result.limitations,
         locations: result.catalogs.map(({ path }) => ({
+          kind: "artifact-path" as const,
+          path,
+        })),
+      }),
+    );
+  }
+
+  private async traceDylibResolution(
+    parameters: Readonly<Record<string, JsonValue>>,
+    options?: ExecutionOptions,
+  ) {
+    if (this.target.kind !== "executable" || this.target.format !== "mach-o")
+      throw new ArtifactReaderFailure(
+        "unavailable",
+        "trace_dylib_resolution requires an active Mach-O or .app bundle target",
+      );
+    // Only a target opened from an app bundle directory carries its Info.plist;
+    // a regular file whose name ends in .app is a standalone image.
+    const bundle =
+      this.target.bundleInfoPlist === undefined
+        ? undefined
+        : this.target.sourcePath;
+    const result = await traceDylibResolution({
+      rootPath: bundle ?? dirname(this.target.path),
+      targetPath: this.target.path,
+      targetSha256: this.target.sha256,
+      enumerateRoots: bundle !== undefined,
+      parameters,
+      ...(options?.signal === undefined ? {} : { signal: options.signal }),
+    });
+    return ok(
+      createAnalysisExecution(result, IDENTITY, {
+        limitations: result.limitations,
+        locations: result.images.map(({ path }) => ({
           kind: "artifact-path" as const,
           path,
         })),
@@ -315,6 +360,8 @@ const translateFailure = (
       cause.details,
       cause.message,
     );
+  // Caller-selection failures are already typed; keep their correction details.
+  if (cause instanceof AnalysisInputError) return cause;
   return new ArtifactOperationError(operation, "io");
 };
 

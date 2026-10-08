@@ -11,6 +11,32 @@ breaking changes. Record the full source SHA and create `release/VERSION` at
 that commit. The version is a maintainer choice; Release Please's proposed
 version must agree before publication.
 
+`release/VERSION` also sets the expected version for the workflow. Use an exact
+SemVer such as `release/6.1.0` or `release/6.1.0-rc.1`, without build metadata.
+The checkpoint validator rejects a candidate whose package, lockfile, manifest,
+registry metadata or changelog disagrees with that version before creating a tag.
+
+### Compatibility and version selection
+
+REA uses the default SemVer strategy: compatible fixes increment patch;
+compatible capabilities increment minor; incompatible public behavior increments
+major. Adding tools, internal refactoring and correcting behavior outside the
+supported contract do not by themselves require a major release.
+
+The supported public surface includes documented CLI commands/options, MCP tool
+names and input/result contracts, saved evidence formats and supported runtime
+requirements. Before adding `!` or a `BREAKING CHANGE` footer, a PR must identify
+a previously valid call or configuration that will fail or change meaning,
+explain why compatibility cannot be preserved, and give its migration. Prefer
+optional additions, compatibility adapters and a documented deprecation period;
+group deliberate removals into a planned major release. Maintainers review this
+impact before merging; the bot parses markers and cannot infer compatibility.
+
+For example, adding an optional inspection tool is a minor change. Rejecting a
+relative MCP path previously accepted by the public contract is breaking;
+rejecting an input that the existing contract already prohibited is a fix.
+Changing the version number alone does not restore compatibility.
+
 For example, after selecting a reviewed commit for 5.0.0:
 
 ```bash
@@ -47,6 +73,24 @@ a GitHub release or publish a package. Record the final bot PR head after
 normalization, then approve that head's blocked runs from the PR page. Updates
 to the bot branch can create new approval-required runs; approval of an older
 head does not verify the normalized candidate. Wait for the final head's CI.
+
+The validator reads the actual ancestry range from the published baseline tag
+to the selected checkpoint, including visible first-parent Conventional Commits
+and the PR titles in GitHub's default merge messages. The report preserves the
+original merge subject alongside the extracted Conventional Commit title.
+This matters after merging a side-branch release back into a newer main:
+Release Please's chronological history cutoff can omit unreleased mainline
+commits. Unreleased breaking markers require a major increment and references
+in the new release's breaking-change migration section. Other omitted entries
+are reported for review. Historical notes from an older release cannot satisfy
+the new release's migration check. This audits declared markers and references;
+it does not prove API compatibility or the quality of a migration explanation.
+
+If preparation reports a mismatch or omitted breaking changes, inspect the
+recorded ancestry report, correct the release PR's version artifacts and notes,
+regenerate documentation, and review/test its final head. Do not repeatedly
+prepare over manual corrections. Publication independently checks the merged
+candidate again before Release Please can create a tag.
 
 Review the candidate's version, notes, generated metadata, and package
 contents. Wait for the candidate's CI and relevant real-provider checks.
@@ -100,8 +144,8 @@ before cutting the next checkpoint; otherwise main retains the previous
 release baseline and can propose an already-published version again.
 
 After publication, open a PR from the release branch back to main. Preserve
-main's later implementation changes and resolve generated-file conflicts by
-regenerating from the combined contracts with the released package version.
+main's later implementation changes and regenerate ignored build outputs from
+the combined contracts with the released package version.
 Review and test this synchronization PR, then use a merge commit so the release
 tag remains in main's ancestry. Keep the released tag unchanged.
 
@@ -119,9 +163,12 @@ git merge-base --is-ancestor rea-agents-5.0.0 origin/main
 
 Close any superseded rolling release PR. Future releases repeat the checkpoint
 procedure from main; never resume automatic release-PR refreshes on main pushes.
-The generated-metadata workflow stays limited to pull requests into main so it
-does not push commits onto a frozen candidate. Preparation normalizes
-`docs/product-catalog.json` on the bot pull request.
+Preparation generates and validates the catalog, portable conformance
+projections, and packaged skill from the candidate checkout without committing
+them. The checkpoint validator binds tracked version authority to the source
+SHA; generated-catalog and package checks validate the derived representation.
+No generated-metadata workflow pushes follow-up commits onto feature or release
+branches.
 
 ## Partial publication and retries
 

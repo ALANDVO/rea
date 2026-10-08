@@ -1,3 +1,5 @@
+import { EVMOLE_PROVIDER_IDENTITY } from "../../../src/evm/EvmoleRelease.js";
+import { PWNTOOLS_PROVIDER_IDENTITY } from "../../../src/native/pwntools/PwntoolsRelease.js";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +21,10 @@ import {
   MANAGED_WORKFLOW_PROVIDER,
 } from "../../../src/application/InvestigationProviders.js";
 import { CDP_BROWSER_PROVIDER_IDENTITY } from "../../../src/browser/CdpBrowserProvider.js";
+import {
+  HAR_CAPTURE_PROVIDER_IDENTITY,
+  MITMPROXY_CAPTURE_PROVIDER_IDENTITY,
+} from "../../../src/browser/history/CaptureRelease.js";
 import { CDP_ELECTRON_PROVIDER_IDENTITY } from "../../../src/browser/CdpElectronProvider.js";
 import { PLAYWRIGHT_ELECTRON_ACTIVE_PROVIDER_IDENTITY } from "../../../src/browser/PlaywrightElectronActiveProvider.js";
 import { PLAYWRIGHT_BROWSER_SCENARIO_PROVIDER_IDENTITY } from "../../../src/browser/PlaywrightBrowserScenarioProvider.js";
@@ -89,7 +95,7 @@ describe("canonical product catalog", () => {
       );
   });
 
-  it("matches every source-derived checked-in product fact", async () => {
+  it("matches every source-derived build-generated product fact", async () => {
     const catalog = await createProductCatalog(root);
     expect(catalog.tools.total).toBe(TOOL_CONTRACTS.length);
     expect(
@@ -106,9 +112,13 @@ describe("canonical product catalog", () => {
         BINWALK_PROVIDER_IDENTITY,
         UNBLOB_PROVIDER_IDENTITY,
         WAKARU_PROVIDER_IDENTITY,
+        HAR_CAPTURE_PROVIDER_IDENTITY,
+        MITMPROXY_CAPTURE_PROVIDER_IDENTITY,
         GHIDRA_PROVIDER_IDENTITY,
         IDA_PROVIDER_IDENTITY,
         NATIVE_MACOS_PROVIDER_IDENTITY,
+        PWNTOOLS_PROVIDER_IDENTITY,
+        EVMOLE_PROVIDER_IDENTITY,
         ARTIFACT_GRAPH_PROVIDER,
         ANDROID_APPLICATION_PROVIDER,
         APPLE_APPLICATION_PROVIDER,
@@ -185,14 +195,19 @@ describe("canonical product catalog", () => {
       "project_managed_application_graph",
       "verify_managed_native_boundaries",
     ]);
+    // Runtime schema commitments must not fan out into checked-in documentation.
+    // Provider commitments cover the facts actually present in this projection.
+    expect(Object.keys(catalog.runtime_catalog.digests)).toEqual([
+      "providers_sha256",
+    ]);
     expect(catalog.runtime_catalog.digests.providers_sha256).toBe(
       providerCatalogDigest(catalog.providers),
     );
     expect(
-      JSON.parse(await readFile("docs/product-catalog.json", "utf8")),
+      JSON.parse(await readFile("docs/public/product-catalog.json", "utf8")),
     ).toEqual(catalog);
     expect(await serializeProductCatalog(catalog)).toBe(
-      await readFile("docs/product-catalog.json", "utf8"),
+      await readFile("docs/public/product-catalog.json", "utf8"),
     );
     await expect(
       assertDocumentationFacts(root, catalog),
@@ -286,6 +301,8 @@ describe("canonical product catalog drift", () => {
       true,
     );
     expect(issues.some((issue) => issue.includes("Future Client"))).toBe(true);
+    expect(issues).toContain("docs/installation.md: missing Future Client");
+    expect(issues).not.toContain("README.md: missing Future Client");
   });
 
   it("changes the provider projection digest when provider facts drift", async () => {

@@ -1,7 +1,10 @@
+import { registerEvmCommands } from "./cli/evmCommands.js";
+import { registerBinaryDiagnosticsCommands } from "./cli/binaryDiagnosticsCommands.js";
 import { Cli } from "incur";
 
 import { createLogger, parseLogLevel } from "./logger.js";
 import { PRODUCT_IDENTITY } from "./identity.js";
+import { npxRegistrationCommand } from "./application/ClientRegistrationIdentity.js";
 import { registerSetupCommands } from "./cli/setupCommands.js";
 import { registerCoreAnalysisCommands } from "./cli/coreAnalysisCommands.js";
 import { registerUtilityCommands } from "./cli/utilityCommands.js";
@@ -16,6 +19,7 @@ import { registerWebScriptCommands } from "./cli/webScriptCommands.js";
 import { registerWebModuleCommands } from "./cli/webModuleCommands.js";
 import { registerWebSourceLocationCommands } from "./cli/webSourceLocationCommands.js";
 import { registerWebRuntimeCommands } from "./cli/webRuntimeCommands.js";
+import { registerWebNetworkCaptureCommands } from "./cli/webNetworkCaptureCommands.js";
 import { registerJavaScriptRecoveryCommands } from "./cli/javascriptRecoveryCommands.js";
 import { registerAdvancedBrowserCommands } from "./cli/browserAdvancedCommands.js";
 import { registerBrowserScenarioCommands } from "./cliBrowserScenarioCommands.js";
@@ -44,7 +48,7 @@ export const createCli = (
     version: PRODUCT_IDENTITY.packageVersion,
     description: "Reverse engineer anything from your terminal or agent.",
     mcp: {
-      command: PRODUCT_IDENTITY.mcpCommand,
+      command: npxRegistrationCommand().join(" "),
       instructions:
         "Ask what software, artifact, protocol, or behavior the user wants to understand, then choose the available investigation capabilities that can produce evidence.",
     },
@@ -54,10 +58,12 @@ export const createCli = (
   registerSetupCommands(cli, logger);
   registerCoreAnalysisCommands(cli, logger, resultOutput);
   registerUtilityCommands(cli, logger, environment);
+  registerEvmCommands(cli, logger, environment);
   registerArtifactCommands(cli, logger);
   registerManagedCommands(cli, logger);
   registerAndroidCommands(cli, logger, environment);
   registerFirmwareCommands(cli, logger, environment);
+  registerBinaryDiagnosticsCommands(cli, logger, environment);
   registerEvidenceCommands(cli, logger);
   registerProcessCommands(cli, logger, environment);
   registerBrowserCommands(cli, logger);
@@ -65,6 +71,7 @@ export const createCli = (
   registerWebModuleCommands(cli, logger, environment);
   registerWebSourceLocationCommands(cli, logger, environment);
   registerWebRuntimeCommands(cli, logger);
+  registerWebNetworkCaptureCommands(cli, logger, environment);
   registerJavaScriptRecoveryCommands(cli, logger, environment);
   registerAdvancedBrowserCommands(cli, logger);
   registerBrowserScenarioCommands(cli, logger);

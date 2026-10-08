@@ -376,7 +376,8 @@ export class BinarySession
       lookupSnapshot: (target, profile, operation, parameters) =>
         operation === "decode_interface_builder" ||
         operation === "inspect_asset_catalog" ||
-        operation === "inspect_keyed_archive"
+        operation === "inspect_keyed_archive" ||
+        operation === "trace_dylib_resolution"
           ? undefined
           : this.lookupSnapshot(target, profile, operation, parameters),
     });
@@ -399,7 +400,8 @@ export class BinarySession
         profile !== undefined &&
         name !== "decode_interface_builder" &&
         name !== "inspect_asset_catalog" &&
-        name !== "inspect_keyed_archive"
+        name !== "inspect_keyed_archive" &&
+        name !== "trace_dylib_resolution"
       ) {
         const evidence = createEvidence(
           profiled.value.subject ?? active.target,

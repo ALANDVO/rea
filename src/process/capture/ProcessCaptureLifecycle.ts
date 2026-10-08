@@ -364,15 +364,30 @@ const filesystemFailure = (cause: unknown): string | undefined => {
   return `Executable file observation failed: ${cause.message}`;
 };
 
-/** Sample the caller-selected executable contents and stable file identity before launch. */
+/** Metadata IO seam for deterministic prelaunch cancellation and identity checks. */
+export interface SelectedExecutableFileSystem {
+  open(path: string, flags: number): ReturnType<typeof open>;
+  stat(path: string): Promise<BigIntStats>;
+}
+
+const selectedExecutableFileSystem: SelectedExecutableFileSystem = {
+  open,
+  stat: (path) => stat(path, { bigint: true }),
+};
+
+/** Sample the selected file without launching it; retain cancellation and file identity. */
 export const observeSelectedExecutable = async (
   path: string,
   signal?: AbortSignal,
+  fileSystem: SelectedExecutableFileSystem = selectedExecutableFileSystem,
 ): Promise<SelectedExecutableObservation> => {
   assertNotCancelled(signal);
   let handle: Awaited<ReturnType<typeof open>> | undefined;
   try {
-    handle = await open(path, constants.O_RDONLY | constants.O_NONBLOCK);
+    handle = await fileSystem.open(
+      path,
+      constants.O_RDONLY | constants.O_NONBLOCK,
+    );
     const openedStats = await handle.stat({ bigint: true });
     if (!openedStats.isFile())
       return {
@@ -381,9 +396,7 @@ export const observeSelectedExecutable = async (
         reason: "Selected executable is not a regular file.",
       };
     const openedIdentity = identityFromStats(openedStats);
-    const selectedPathIdentity = identityFromStats(
-      await stat(path, { bigint: true }),
-    );
+    const selectedPathIdentity = identityFromStats(await fileSystem.stat(path));
     if (!sameExecutableIdentity(openedIdentity, selectedPathIdentity))
       return {
         sha256: null,
@@ -391,6 +404,9 @@ export const observeSelectedExecutable = async (
         reason: "Selected executable path changed while it was being opened.",
       };
 
+    // IO above can settle after cancellation. Do not construct a stream with an
+    // already-aborted signal: Node can emit a second, unhandled AbortError.
+    assertNotCancelled(signal);
     const hash = createHash("sha256");
     for await (const chunk of handle.createReadStream({
       autoClose: false,
@@ -688,10 +704,18 @@ export const releaseProcessResources = async (options: {
           "owned process cleanup is unverifiable on Windows without process-job authority",
       };
     } else {
+      const terminalPid = options.terminal.pid;
+      const relation = {
+        leaderPid: terminalPid,
+        processGroupId: terminalPid,
+        ...(options.sampledProcessGroupIds === undefined
+          ? {}
+          : { sampledProcessGroupIds: options.sampledProcessGroupIds }),
+      };
       const cleaned = await host.cleanupProcessGroup({
         runId: options.runId,
-        leaderPid: options.terminal.pid,
-        processGroupId: options.terminal.pid,
+        leaderPid: terminalPid,
+        processGroupId: terminalPid,
         sweepTokenOwnedProcesses: true,
         ...(options.sampledProcessGroupIds === undefined
           ? {}
@@ -700,6 +724,7 @@ export const releaseProcessResources = async (options: {
           ? {}
           : { captureBaseline: options.captureBaseline }),
       });
+      const unverified = [...(cleaned.unverified ?? [])];
       if (!cleaned.cleaned) {
         ownedProcessGroup = { state: "unverified", reason: cleaned.reason };
       } else {
@@ -708,11 +733,25 @@ export const releaseProcessResources = async (options: {
             options.runId,
             undefined,
             options.captureBaseline,
+            relation,
           ),
         );
+        unverified.push(...(verified.unverified ?? []));
         if (!verified.cleaned)
           ownedProcessGroup = { state: "unverified", reason: verified.reason };
       }
+      if (unverified.length > 0)
+        ownedProcessGroup = {
+          ...ownedProcessGroup,
+          unverified_processes: [
+            ...new Map(
+              unverified.map(({ pid, diagnostic }) => [
+                `${String(pid)}:${diagnostic}`,
+                { pid, reason: diagnostic },
+              ]),
+            ).values(),
+          ],
+        };
     }
   }
   let temporaryRoot: ProcessCaptureCleanupReport["temporary_root"] = {
@@ -876,7 +915,8 @@ export const resolveProcessResult = (
   }
   if (capture === undefined)
     throw new ProcessCaptureError("process capture produced no result");
-  if ("cleanup" in capture) return capture;
+  const unverifiedProcesses = cleanup.owned_process_group.unverified_processes;
+  if ("cleanup" in capture && unverifiedProcesses === undefined) return capture;
 
   const settlement: UnverifiedProcessCapture["settlement"] =
     capture.settlement.state === "quiesced"
@@ -886,9 +926,20 @@ export const resolveProcessResult = (
     return parseProcessCapture({
       ...capture,
       settlement,
+      residual_unknowns: [
+        ...capture.residual_unknowns,
+        ...(unverifiedProcesses ?? []).map(({ pid, reason }) => ({
+          scope: "process" as const,
+          reason: `Ownership of unrelated process ${String(pid)} could not be verified; it was left untouched: ${reason}`,
+        })),
+      ],
       cleanup: {
+        ...("cleanup" in capture ? capture.cleanup : {}),
         owned_process_group: "verified",
         temporary_root: "removed",
+        ...(unverifiedProcesses === undefined
+          ? {}
+          : { unverified_processes: unverifiedProcesses }),
       },
     });
   } catch (cause: unknown) {

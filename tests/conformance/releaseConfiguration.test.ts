@@ -8,7 +8,6 @@ const readJson = async (path: string): Promise<unknown> =>
   JSON.parse(await readFile(path, "utf8")) as unknown;
 
 const versionedDocumentation = [
-  "README.md",
   "README_zh.md",
   "README_ja.md",
   "README_ko.md",
@@ -47,11 +46,6 @@ describe("release configuration", () => {
               type: "json",
               path: "server.json",
               jsonpath: "$.packages[0].version",
-            },
-            {
-              type: "json",
-              path: "docs/product-catalog.json",
-              jsonpath: "$.package.version",
             },
           ],
         },

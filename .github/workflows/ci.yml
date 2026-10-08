@@ -102,8 +102,12 @@ jobs:
         with:
           name: rea-dist
           path: dist
-      - name: Generate source catalog from downloaded build
-        run: node scripts/generate-mcp-tool-catalog.mjs
+      - name: Restore generated outputs from downloaded build
+        run: |
+          node scripts/generate-mcp-tool-catalog.mjs
+          node scripts/generate-skill-metadata.mjs
+          node scripts/generate-product-catalog.mjs
+          node scripts/generate-completion-ledger.mjs
       - run: npm run test:ci:shard:run -- --shard=${{ matrix.shard }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -317,8 +321,8 @@ jobs:
       - run: npm run verify:keyed-archive
       - run: npm run verify:asset-catalog
       - run: npm run verify:macos-bundle
-      - name: Native compiled NIB hierarchy regressions
-        run: npm run test:focused -- tests/boundary/filesystem/nibNativeHierarchy.test.ts tests/boundary/filesystem/interfaceBuilderBundle.test.ts
+      - name: Native installer and compiled NIB hierarchy regressions
+        run: npm run test:focused -- tests/boundary/filesystem/installScript.test.ts tests/boundary/filesystem/nibNativeHierarchy.test.ts tests/boundary/filesystem/interfaceBuilderBundle.test.ts
       - name: Real binary metadata and Interface Builder integration
         run: npm run verify:apple-dispatch && npm run verify:interface-builder
       - name: Native plist CLI selection regressions
@@ -327,6 +331,8 @@ jobs:
         run: npm run test:focused -- tests/boundary/cli/nativeDemangleCli.test.ts tests/boundary/mcp/nativeDemangleMcp.test.ts
       - name: Process filesystem snapshot descriptor regressions
         run: npm run test:focused -- src/process/capture/FilesystemSnapshot.test.ts
+      - name: Native Darwin ownership and process cleanup regressions
+        run: npm run test:focused -- tests/boundary/process/darwinProcessRunTokenReader.test.ts tests/boundary/process/processCaptureLifecycle.test.ts tests/boundary/cli/processCli.test.ts tests/boundary/mcp/sessionMcp.test.ts
 
   reconstruction-readiness:
     name: Reconstruction readiness
@@ -441,6 +447,11 @@ jobs:
           tests/boundary/filesystem/safeOutputTree.test.ts
           tests/boundary/providers/native/artifactProvider.archiveSafety.test.ts
           tests/boundary/filesystem/setupUnavailableProvider.test.ts
+          tests/boundary/filesystem/windowsNpxRegistration.test.ts
+          src/application/ClientRegistrationIdentity.test.ts
+          tests/boundary/filesystem/webScriptManifestPaths.test.ts
+          tests/acceptance/webModuleCli.test.ts
+          tests/acceptance/webSourceLocationCli.test.ts
           tests/boundary/cli/referenceSourceImportStatus.test.ts
           src/cliReferenceSourceImportStatus.test.ts
           tests/boundary/filesystem/asarInventoryFreshness.test.ts
@@ -481,3 +492,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run docs:check
+      - name: Generation leaves authored files unchanged
+        run: git diff --exit-code
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-docs
+          path: |
+            docs/public/product-catalog.json
+            docs/verification/managed-conformance-*.json
+            skills/reverse-engineer-anything
+          if-no-files-found: error

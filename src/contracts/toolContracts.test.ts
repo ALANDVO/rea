@@ -1,3 +1,5 @@
+import { EVM_TOOL_CONTRACTS } from "./evm/evmToolContracts.js";
+import { BINARY_DIAGNOSTICS_TOOL_CONTRACTS } from "./native/binaryDiagnosticsToolContracts.js";
 import { describe, expect, it } from "vitest";
 
 import { ENHANCED_TOOL_CONTRACTS } from "./enhancedToolContracts.js";
@@ -17,12 +19,15 @@ import { APPLICATION_TOOL_CONTRACTS } from "./applicationToolContracts.js";
 import { JAVASCRIPT_RECOVERY_TOOL_CONTRACTS } from "./javascript/javascriptRecoveryToolContracts.js";
 import { WEB_SCRIPT_TOOL_CONTRACTS } from "./webScriptToolContracts.js";
 import { WEB_RUNTIME_TOOL_CONTRACTS } from "./webRuntimeToolContracts.js";
+import { WEB_NETWORK_CAPTURE_TOOL_CONTRACTS } from "./webNetworkCaptureToolContracts.js";
 
 const GROUPS = {
   official: OFFICIAL_TOOL_CONTRACTS,
   enhanced: ENHANCED_TOOL_CONTRACTS,
   native: NATIVE_TOOL_CONTRACTS,
+  binary_diagnostics: BINARY_DIAGNOSTICS_TOOL_CONTRACTS,
   artifact: ARTIFACT_TOOL_CONTRACTS,
+  evm: EVM_TOOL_CONTRACTS,
   managed: MANAGED_TOOL_CONTRACTS,
   android: ANDROID_TOOL_CONTRACTS,
   firmware: FIRMWARE_TOOL_CONTRACTS,
@@ -34,6 +39,7 @@ const GROUPS = {
   javascript_recovery: JAVASCRIPT_RECOVERY_TOOL_CONTRACTS,
   web_script_export: WEB_SCRIPT_TOOL_CONTRACTS,
   web_runtime: WEB_RUNTIME_TOOL_CONTRACTS,
+  web_network_capture: WEB_NETWORK_CAPTURE_TOOL_CONTRACTS,
   session: SESSION_TOOL_CONTRACTS,
 } as const;
 

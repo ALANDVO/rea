@@ -72,6 +72,8 @@ export type ProviderProcessLaunch =
 
 /** Detached diagnostics captured for one supervised provider process. */
 export interface ProviderProcessSnapshot {
+  /** True only when a configured diagnostic budget excluded output bytes. */
+  readonly diagnosticTruncated?: boolean;
   readonly stdout: {
     readonly text: string;
     readonly bytes: number;
@@ -91,6 +93,7 @@ export type ProviderProcessDiagnostic =
       readonly stream: "stdout" | "stderr";
       readonly bytes: number;
       readonly totalBytes: number;
+      readonly truncated?: boolean;
     }
   | {
       readonly type: "exit";
@@ -104,6 +107,8 @@ export type ProviderProcessDiagnostic =
 export interface ProviderProcessSupervisorOptions {
   /** Retain stdout for diagnostics; disable when it carries a parsed protocol. Defaults to true. */
   readonly captureStdout?: boolean;
+  /** Aggregate retained stdout/stderr byte budget; overflow is drained and reported, not retained. */
+  readonly maxDiagnosticBytes?: number;
   readonly onDiagnostic?: (event: ProviderProcessDiagnostic) => void;
 }
 
@@ -209,6 +214,9 @@ export class ProviderProcessSupervisor {
   }>();
   readonly #outputClose = deferred<void>();
   #outputClosed = false;
+  #stdoutObservedBytes = 0;
+  #stderrObservedBytes = 0;
+  #diagnosticTruncated = false;
   readonly #onStdout = (chunk: Buffer | string): void => {
     this.#capture("stdout", this.#stdout, chunk);
   };
@@ -253,9 +261,10 @@ export class ProviderProcessSupervisor {
       this.#recordExit(launch.process.exitCode, launch.process.signalCode);
   }
 
-  /** Latest complete output and exit observation. */
+  /** Latest retained output and exit observation, with explicit configured truncation. */
   snapshot(): ProviderProcessSnapshot {
     return {
+      ...(this.#diagnosticTruncated ? { diagnosticTruncated: true } : {}),
       stdout: this.#stdout.snapshot(),
       stderr: this.#stderr.snapshot(),
       exitCode: this.#exitObservation?.code,
@@ -267,6 +276,9 @@ export class ProviderProcessSupervisor {
   resetOutput(): void {
     this.#stdout.reset();
     this.#stderr.reset();
+    this.#stdoutObservedBytes = 0;
+    this.#stderrObservedBytes = 0;
+    this.#diagnosticTruncated = false;
   }
 
   /** Wait for process exit up to a caller-owned bounded interval. */
@@ -388,12 +400,29 @@ export class ProviderProcessSupervisor {
     chunk: Buffer | string,
   ): void {
     const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    capture.append(bytes);
+    if (stream === "stdout") this.#stdoutObservedBytes += bytes.byteLength;
+    else this.#stderrObservedBytes += bytes.byteLength;
+    const remaining =
+      this.#options.maxDiagnosticBytes === undefined
+        ? bytes.byteLength
+        : Math.max(
+            0,
+            this.#options.maxDiagnosticBytes -
+              this.#stdout.bytes -
+              this.#stderr.bytes,
+          );
+    const retained = Math.min(bytes.byteLength, remaining);
+    if (retained < bytes.byteLength) this.#diagnosticTruncated = true;
+    if (retained > 0) capture.append(bytes.subarray(0, retained));
     this.#options.onDiagnostic?.({
       type: "output",
       stream,
       bytes: bytes.byteLength,
-      totalBytes: capture.bytes,
+      totalBytes:
+        stream === "stdout"
+          ? this.#stdoutObservedBytes
+          : this.#stderrObservedBytes,
+      ...(retained < bytes.byteLength ? { truncated: true } : {}),
     });
   }
 

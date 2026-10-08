@@ -1,5 +1,15 @@
 # MCP runtime contracts
 
+## Generated catalog
+
+Run `npm run build:cached` in a source checkout to generate the machine-readable
+catalog at `docs/public/product-catalog.json`. The [catalog](product-catalog.json)
+is also included in documentation builds. PR CI retains it with the packaged
+skill and portable conformance projections in the `generated-docs` artifact.
+These outputs describe the exact source revision being built; they are not
+checked-in snapshots. For a running server, `binary_session` remains the
+authoritative source of catalog identity and tool availability.
+
 ## Identity and discovery
 
 `binary_session` reports the active package, server, SDK, and negotiated
@@ -12,6 +22,24 @@ supplies identity.
 are currently unavailable. Opening or closing a target or observing a provider
 health transition leaves that catalog unchanged and does not emit
 `notifications/tools/list_changed`.
+
+Advertised input and output schemas contain no reachable recursive references.
+The input compatibility profile limits nesting to ten object, array, and
+`anyOf`/`oneOf`/`allOf` levels, following local references per path. Property
+maps, reference definitions, and example data do not add schema levels. Tests
+check the complete catalog after SDK conversion and its generated counterpart.
+This is REA's local compatibility profile; individual model APIs can impose
+additional limits.
+
+For passive `compare_web_captures` inputs, pass each complete
+`inspect_web_page` result in `before.inspection` or `after.inspection`, with an
+optional complete `discover_webmcp_tools` result in the matching `webmcp` field.
+The input schema describes these producer-result objects as round-trip payloads.
+For scenario comparisons, pass complete `capture_browser_scenario` results in
+`before_scenario` and `after_scenario`. REA validates all nested fields with the
+original capture schemas; observation output schemas remain complete. Scenario
+authoring inputs and comparison normalization options retain their full
+advertised structure.
 
 Call `binary_session` with `{}` and read `result.tool_availability` to choose a
 callable operation for the current target, provider, host, and negotiated client

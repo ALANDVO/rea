@@ -1,3 +1,5 @@
+import { EVM_TOOL_CONTRACTS } from "./evm/evmToolContracts.js";
+import { BINARY_DIAGNOSTICS_TOOL_CONTRACTS } from "./native/binaryDiagnosticsToolContracts.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -16,6 +18,7 @@ import { ELECTRON_TOOL_CONTRACTS } from "./javascript/electronToolContracts.js";
 import { JAVASCRIPT_RUNTIME_OBSERVATION_TOOL_CONTRACTS } from "./javascript/javascriptRuntimeObservationToolContracts.js";
 import { APPLICATION_TOOL_CONTRACTS } from "./applicationToolContracts.js";
 import { WEB_RUNTIME_TOOL_CONTRACTS } from "./webRuntimeToolContracts.js";
+import { WEB_NETWORK_CAPTURE_TOOL_CONTRACTS } from "./webNetworkCaptureToolContracts.js";
 import { WEB_SCRIPT_TOOL_CONTRACTS } from "./webScriptToolContracts.js";
 import { JAVASCRIPT_RECOVERY_TOOL_CONTRACTS } from "./javascript/javascriptRecoveryToolContracts.js";
 import { TOOL_EFFECTS } from "./toolEffects.js";
@@ -68,7 +71,9 @@ describe("tool contract surface", () => {
       ...OFFICIAL_TOOL_CONTRACTS,
       ...ENHANCED_TOOL_CONTRACTS,
       ...NATIVE_TOOL_CONTRACTS,
+      ...BINARY_DIAGNOSTICS_TOOL_CONTRACTS,
       ...ARTIFACT_TOOL_CONTRACTS,
+      ...EVM_TOOL_CONTRACTS,
       ...ANDROID_TOOL_CONTRACTS,
       ...FIRMWARE_TOOL_CONTRACTS,
       ...MANAGED_TOOL_CONTRACTS,
@@ -80,6 +85,7 @@ describe("tool contract surface", () => {
       ...APPLICATION_TOOL_CONTRACTS,
       ...WEB_SCRIPT_TOOL_CONTRACTS,
       ...WEB_RUNTIME_TOOL_CONTRACTS,
+      ...WEB_NETWORK_CAPTURE_TOOL_CONTRACTS,
       ...JAVASCRIPT_RECOVERY_TOOL_CONTRACTS,
       ...SESSION_TOOL_CONTRACTS,
     ].map(({ name }) => name);

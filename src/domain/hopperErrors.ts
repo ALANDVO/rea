@@ -1,4 +1,5 @@
 import { AnalysisError } from "./analysisErrorBase.js";
+import type { HopperProcessProviderState } from "./providerOperationHealth.js";
 import {
   hopperStartupFailure,
   type HopperStartupDiagnostic,
@@ -76,17 +77,21 @@ export class HopperProcessError extends HopperError {
   readonly _tag = "HopperProcessError";
   readonly failureCode: HopperStartupFailureCode | undefined;
   override readonly userMessage: string | undefined;
+  readonly providerState: HopperProcessProviderState;
 
   constructor(
     readonly exitCode: number | null,
     readonly diagnostic?: HopperStartupFailureDiagnostic,
     readonly operation?: string,
     readonly requestId?: number,
+    providerState?: HopperProcessProviderState,
   ) {
     super(`Hopper bridge stopped unexpectedly with code ${String(exitCode)}`);
     const failure = hopperStartupFailure(exitCode);
     this.failureCode = failure?.code;
     this.userMessage = failure?.message;
+    this.providerState =
+      providerState ?? (exitCode === null ? "unknown" : "exited");
   }
 }
 

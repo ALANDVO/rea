@@ -4,6 +4,7 @@ import { HOPPER_OPERATIONS } from "../../../../src/hopper/HopperProvider.js";
 import { HopperClient } from "../../../../src/hopper/HopperClient.js";
 import type { HopperDiagnostic } from "../../../../src/hopper/HopperDiagnostics.js";
 import { providerCleanupFailure } from "../../../../src/hopper/HopperDiagnostics.js";
+import { projectAnalysisError } from "../../../../src/domain/analysisErrorProjection.js";
 
 import {
   HopperFixtureLauncher as FixtureLauncher,
@@ -190,5 +191,109 @@ describe("HopperClient response lifecycle", () => {
       category: "bridge_exception",
       message: "safe fake failure",
     });
+  });
+});
+
+describe("HopperClient operational diagnostics", () => {
+  it("records process exit code, stage, and restart guidance on unexpected exit", async () => {
+    const launcher = new FixtureLauncher();
+    const client = await startClient(launcher);
+    const result = await client.callTool("exit");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatchObject({
+        _tag: "HopperProcessError",
+        exitCode: 7,
+        operation: "exit",
+        providerState: "exited",
+      });
+      const projected = projectAnalysisError(result.error);
+      expect(projected).toMatchObject({
+        code: "provider_unavailable",
+        retryable: true,
+        details: {
+          stage: "analysis",
+          provider_state: "exited",
+          retry_action: "restart_provider",
+          operation: "exit",
+          exit_code: 7,
+        },
+      });
+      expect(projected.message).toContain(
+        "Hopper exited during exit (exit code 7)",
+      );
+      expect(projected.remediation.action).toContain("close_binary");
+    }
+    expect(client.operationHealth()).toMatchObject({
+      state: "exited",
+      stage: "analysis",
+      retryAction: "restart_provider",
+      exitCode: 7,
+      requests: [
+        expect.objectContaining({
+          operation: "exit",
+          stage: "analysis",
+        }),
+      ],
+    });
+  });
+
+  it("retains request correlation and health across concurrent requests when the bridge process terminates", async () => {
+    const launcher = new FixtureLauncher();
+    const client = await startClient(launcher);
+    const hanging = client.callTool("hang");
+    const inFlight = await launcher.waitForRequest("hang");
+    const queued = client.callTool("echo", { label: "queued" });
+
+    launcher.processes.at(-1)?.kill("SIGKILL");
+
+    const [hangingResult, queuedResult] = await Promise.all([hanging, queued]);
+    expect(hangingResult.ok).toBe(false);
+    expect(queuedResult.ok).toBe(false);
+    if (!hangingResult.ok && !queuedResult.ok) {
+      expect(hangingResult.error).toMatchObject({
+        _tag: "HopperProcessError",
+        operation: "hang",
+        requestId: inFlight.id,
+        providerState: "exited",
+      });
+      expect(queuedResult.error).toMatchObject({
+        _tag: "HopperProcessError",
+        operation: "echo",
+        requestId: inFlight.id + 1,
+        providerState: "exited",
+      });
+      const hangingProjected = projectAnalysisError(hangingResult.error);
+      const queuedProjected = projectAnalysisError(queuedResult.error);
+      expect(hangingProjected.details).toMatchObject({
+        stage: "analysis",
+        provider_state: "exited",
+        retry_action: "restart_provider",
+        operation: "hang",
+        request_id: inFlight.id,
+      });
+      expect(queuedProjected.details).toMatchObject({
+        stage: "analysis",
+        provider_state: "exited",
+        retry_action: "restart_provider",
+        operation: "echo",
+        request_id: inFlight.id + 1,
+      });
+      expect(hangingProjected.message).toContain("Hopper exited during hang");
+      expect(hangingProjected.remediation.action).toContain("close_binary");
+      expect(queuedProjected.message).toContain("Hopper exited during echo");
+      expect(queuedProjected.remediation.action).toContain("close_binary");
+    }
+    expect(client.operationHealth()).toMatchObject({
+      state: "exited",
+      retryAction: "restart_provider",
+    });
+    expect(client.operationHealth().requests).toEqual([
+      expect.objectContaining({ requestId: inFlight.id, operation: "hang" }),
+      expect.objectContaining({
+        requestId: inFlight.id + 1,
+        operation: "echo",
+      }),
+    ]);
   });
 });
